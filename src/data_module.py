@@ -22,7 +22,9 @@ except ImportError:
     import lightning as pl
 
 # Import MHC sequences from constants
-from .constants import MHC_PROT_SEQ
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from constants import MHC_PROT_SEQ
 
 
 # Amino acid vocabulary for simple embedding encoder
@@ -621,47 +623,15 @@ def inspect_dataset(dataset: MHCPeptideDataset, num_samples: int = 1_000_000):
 
 
 if __name__ == "__main__":
-    # Quick test of data module
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Test MHC-Peptide DataModule")
-    parser.add_argument("--data_dir", type=str, default="datasets/el/folds",
-                        help="Directory with fold files")
-    parser.add_argument("--fold", type=int, default=0, help="Fold to use")
-    parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
-    parser.add_argument("--tokenizer", type=str, default="embedding",
-                        choices=["embedding", "esm2"], help="Tokenizer type")
-    
-    args = parser.parse_args()
-    
-    # Initialize data module
-    dm = MHCPeptideDataModule(
-        data_dir=args.data_dir,
-        fold=args.fold,
-        batch_size=args.batch_size,
-        tokenizer_type=args.tokenizer,
-        num_workers=0  # For debugging
-    )
-    
-    # Setup
-    dm.setup('fit')
-    
-    # Inspect dataset
-    print("=" * 60)
-    print("TRAINING DATASET")
-    print("=" * 60)
-    inspect_dataset(dm.train_dataset)
-    
-    # Test dataloader
-    print("=" * 60)
-    print("DATALOADER TEST")
-    print("=" * 60)
-    train_loader = dm.train_dataloader()
-    batch = next(iter(train_loader))
-    
-    print("Batch contents:")
-    for key, value in batch.items():
-        if isinstance(value, torch.Tensor):
-            print(f"  {key}: {value.shape} ({value.dtype})")
-    
-    print("\nDataModule test passed!")
+    # Test ESMTokenizer
+    esm_tokenizer = ESMTokenizer()
+    tokens, mask = esm_tokenizer.tokenize("MKTIIALSYIMKTIIALSYIMKTIIALSYI", 15)
+    print(tokens)
+    print(mask)
+    print('='*50)
+
+    # Test simple tokenize
+    tokens, mask = simple_tokenize("MKTIIALSYIMKTIIALSYIMKTIIALSYI", 15)
+    print(tokens)
+    print(mask)
+    print('='*50)

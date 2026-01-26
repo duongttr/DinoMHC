@@ -640,6 +640,8 @@ class GroovePeptideFusion(nn.Module):
             groove_fused = groove_fused * groove_mask.unsqueeze(-1).to(groove_fused.dtype)
         
         return peptide_fused, groove_fused, all_attention
+
+
 # END============================================================================
 # Cross-Attention with Geometric Bias
 # ===============================================================================
