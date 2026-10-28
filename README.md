@@ -1,7 +1,7 @@
 <h1 align="center">🦖 DinoMHC</h1>
 <p align="center"><a href="#">📝 Paper (Update soon!)</a> | <a href="https://doi.org/10.5281/zenodo.20491231">🗂️ Datasets</a> |  <a href="https://1drv.ms/u/c/fa72f5f3c0e55162/IQDrYl8gFdD7TqZFpeQB3kXyAbspSezf8e-_Jmc5NlIz1pY">🏋️‍♂️ Model weights</a> | <a href="https://balalab-skku.org/">🚀 Webserver (Update soon!)</a> | <a href="#">📚 Cite our paper!</a></p>
 
-The official implementation of manuscript **DinoMHC: An interpretable sequence-geometric framework improves MHC-I presentation prediction and transfers CD8+ T-cell immunogenicity**
+The official implementation of manuscript **DinoMHC**
 
 ## News
 - Update soon!
