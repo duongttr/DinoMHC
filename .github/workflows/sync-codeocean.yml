@@ -2,6 +2,8 @@
 # Required repository secrets:
 #   CO_USER  - Code Ocean login email
 #   CO_TOKEN - Code Ocean password (or access token for institutional logins)
+# Code Ocean rejects pushes while the capsule has uncommitted changes in its web IDE
+# (e.g. the .gitignore update after a data upload): click "Commit Changes" there first.
 name: Sync to Code Ocean
 
 on:
@@ -20,7 +22,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Clone Code Ocean capsule
         env:
