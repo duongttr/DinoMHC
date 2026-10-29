@@ -1,20 +1,58 @@
 #!/usr/bin/env bash
 # Code Ocean entry point. The GitHub Actions workflow copies this file to /code/run.
 #
-# Expected layout of the capsule's /data folder (mirrors the repo's local layout):
+# Evaluates the DinoMHC 3-fold ensemble on the MS benchmark test set.
+#
+# Usage:  ./run          quick demo (default): fixed stratified subset of TEST.csv,
+#                        ~20,000 rows covering all 130 alleles; ~20 min on one L40S.
+#         ./run full     full reproduction on all 501,633 rows; ~6.5 h on one L40S.
+# Peak GPU memory is ~6.5 GB (batch size 32), so any >=16 GB GPU is sufficient.
+#
+# Expected layout of the capsule's /data folder:
 #   /data/weights/DINOMHC_WEIGHTS/{fold_0,fold_1,fold_2,model_config.yaml}
 #   /data/datasets/MS/TEST.csv
-# Outputs are written to /results.
+#   /data/esm2_t30_150M_UR50D/   local copy of facebook/esm2_t30_150M_UR50D (no internet needed)
+# Outputs are written to /results/TEST_demo or /results/TEST_full.
 set -euo pipefail
+
+MODE=${1:-demo}
+case "$MODE" in demo|full) ;; *) echo "Usage: $0 [demo|full]" >&2; exit 2 ;; esac
 
 cd "$(dirname "$0")"
 DATA=../data
 WEIGHTS="$DATA/weights/DINOMHC_WEIGHTS"
+TEST_CSV="$DATA/datasets/MS/TEST.csv"
+
+# Point the model config at the bundled ESM-2 copy and keep Hugging Face offline.
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+MODEL_CONFIG=$(mktemp --suffix=.yaml)
+sed "s|^esm_model_name:.*|esm_model_name: $(realpath "$DATA/esm2_t30_150M_UR50D")|" \
+    "$WEIGHTS/model_config.yaml" > "$MODEL_CONFIG"
+
+if [ "$MODE" = demo ]; then
+    # Stratify by (allele, label) and keep >=2 rows per group, so every allele has
+    # both classes and the per-allele metrics stay defined.
+    SUBSET=$(mktemp --suffix=.csv)
+    python - "$TEST_CSV" "$SUBSET" <<'PY'
+import sys
+import pandas as pd
+
+df = pd.read_csv(sys.argv[1])
+frac = 20000 / len(df)
+subset = (
+    df.groupby(["mhc", "label"], group_keys=False)[df.columns.tolist()]
+    .apply(lambda g: g.sample(n=min(len(g), max(2, round(len(g) * frac))), random_state=0))
+)
+subset.to_csv(sys.argv[2], index=False)
+print(f"Demo subset: {len(subset)} of {len(df)} rows, {subset['mhc'].nunique()} alleles")
+PY
+    TEST_CSV=$SUBSET
+fi
 
 python -u test.py \
     --checkpoints "$WEIGHTS/fold_0/" "$WEIGHTS/fold_1/" "$WEIGHTS/fold_2/" \
-    --benchmark_dataset "$DATA/datasets/MS/TEST.csv" \
-    --output ../results/TEST \
-    --model_config "$WEIGHTS/model_config.yaml" \
+    --benchmark_dataset "$TEST_CSV" \
+    --output "../results/TEST_$MODE" \
+    --model_config "$MODEL_CONFIG" \
     --device cuda \
     --calculate_by_allele
