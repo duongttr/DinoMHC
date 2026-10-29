@@ -1,0 +1,54 @@
+# Mirrors this repository into the Code Ocean capsule's /code folder.
+# Required repository secrets:
+#   CO_USER  - Code Ocean login email
+#   CO_TOKEN - Code Ocean password (or access token for institutional logins)
+name: Sync to Code Ocean
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: codeocean-sync
+  cancel-in-progress: false
+
+env:
+  CAPSULE_ID: "7303367"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone Code Ocean capsule
+        env:
+          CO_USER: ${{ secrets.CO_USER }}
+          CO_TOKEN: ${{ secrets.CO_TOKEN }}
+        run: |
+          user=$(jq -rn --arg v "$CO_USER" '$v|@uri')
+          token=$(jq -rn --arg v "$CO_TOKEN" '$v|@uri')
+          echo "::add-mask::$token"
+          git clone "https://${user}:${token}@git.codeocean.com/capsule-${CAPSULE_ID}.git" "$RUNNER_TEMP/capsule"
+
+      - name: Copy code into capsule
+        run: |
+          mkdir -p "$RUNNER_TEMP/capsule/code"
+          rsync -a --delete \
+            --exclude '.git/' --exclude '.github/' --exclude 'codeocean/' \
+            ./ "$RUNNER_TEMP/capsule/code/"
+          install -m 755 codeocean/run "$RUNNER_TEMP/capsule/code/run"
+
+      - name: Commit and push to Code Ocean
+        working-directory: ${{ runner.temp }}/capsule
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A code
+          if git diff --cached --quiet; then
+            echo "Capsule already up to date."
+            exit 0
+          fi
+          git commit -m "Sync from ${GITHUB_REPOSITORY}@${GITHUB_SHA::7}"
+          git push origin HEAD
