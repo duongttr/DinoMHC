@@ -9,7 +9,9 @@
 # Peak GPU memory is ~6.5 GB (batch size 32), so any >=16 GB GPU is sufficient.
 #
 # Expected layout of the capsule's /data folder:
-#   /data/weights/DINOMHC_WEIGHTS/{fold_0,fold_1,fold_2,model_config.yaml}
+#   /data/weights/DINOMHC_BF16/{fold_0,fold_1,fold_2}.safetensors, model_config.yaml
+#       bf16 consolidation of the DeepSpeed checkpoints (~2.2 GB instead of 6.9 GB).
+#       test.py casts the model to bf16 after loading, so predictions are identical.
 #   /data/datasets/MS/TEST.csv
 #   /data/esm2_t30_150M_UR50D/   local copy of facebook/esm2_t30_150M_UR50D (no internet needed)
 # Outputs are written to /results/TEST_demo or /results/TEST_full.
@@ -20,7 +22,7 @@ case "$MODE" in demo|full) ;; *) echo "Usage: $0 [demo|full]" >&2; exit 2 ;; esa
 
 cd "$(dirname "$0")"
 DATA=../data
-WEIGHTS="$DATA/weights/DINOMHC_WEIGHTS"
+WEIGHTS="$DATA/weights/DINOMHC_BF16"
 TEST_CSV="$DATA/datasets/MS/TEST.csv"
 
 # Point the model config at the bundled ESM-2 copy and keep Hugging Face offline.
@@ -50,7 +52,7 @@ PY
 fi
 
 python -u test.py \
-    --checkpoints "$WEIGHTS/fold_0/" "$WEIGHTS/fold_1/" "$WEIGHTS/fold_2/" \
+    --checkpoints "$WEIGHTS/fold_0.safetensors" "$WEIGHTS/fold_1.safetensors" "$WEIGHTS/fold_2.safetensors" \
     --benchmark_dataset "$TEST_CSV" \
     --output "../results/TEST_$MODE" \
     --model_config "$MODEL_CONFIG" \

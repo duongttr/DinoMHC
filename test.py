@@ -2,6 +2,7 @@ import argparse
 import json, yaml
 import tempfile
 from deepspeed.utils.zero_to_fp32 import get_fp32_state_dict_from_zero_checkpoint
+from safetensors.torch import load_file
 from pathlib import Path
 from src.model import DinoMHC, DinoMHC_ProtTrans
 import torch
@@ -99,7 +100,10 @@ def load_config(config_path):
 def load_model_checkpoint(model, checkpoint_path, device="cuda"):
     model = model.to(device=device)
     
-    state_dict = get_fp32_state_dict_from_zero_checkpoint(checkpoint_path)
+    if str(checkpoint_path).endswith(".safetensors"):
+        state_dict = load_file(checkpoint_path)
+    else:
+        state_dict = get_fp32_state_dict_from_zero_checkpoint(checkpoint_path)
     
     if all(key.startswith("model.") for key in state_dict.keys()):
         state_dict = {key[len("model."):]: value for key, value in state_dict.items()}
